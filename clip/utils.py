@@ -24,7 +24,6 @@ def get_transforms(mode="train"):
     
 def cross_entropy(preds, targets, reduction='none'):
     log_softmax = nn.LogSoftmax(dim=-1)
-    pred_logits = log_softmax(preds)
     loss = (-targets * log_softmax(preds)).sum(1)
     if reduction == "none":
         return loss

@@ -1,22 +1,20 @@
 import os 
 print(os.getcwd())
 
-from clip.CLIPDataset import build_loaders
+from clip.CIFAR100_dataloader import build_cifar100_loaders
+from clip.Pokemon_Dataset import build_pokemon_loaders
 from transformers import DistilBertTokenizer
 import itertools
-from datasets import load_dataset
 from clip.CFG import CFG
 from clip import CLIPModel
 import torch
 from clip.train import train_epoch, valid_epoch
 
 def main():
-    dataset = load_dataset('svjack/pokemon-blip-captions-en-ja', split='train')
-    split_dataset = dataset.train_test_split(test_size=0.2, seed=18)
 
     tokenizer = DistilBertTokenizer.from_pretrained(CFG.text_tokenizer)
-    train_loader = build_loaders(split_dataset, tokenizer, mode="train")
-    valid_loader = build_loaders(split_dataset, tokenizer, mode="test")
+    train_loader, valid_loader = build_cifar100_loaders(tokenizer)
+    #train_loader, valid_loader = build_pokemon_loaders(tokenizer)
 
     model = CLIPModel().to(CFG.device)
     params = [
@@ -33,14 +31,23 @@ def main():
     step = "epoch"
 
     best_loss = float('inf')
+    train_accuracy = []
+    valid_accuracy = []
     for epoch in range(CFG.epochs):
         print(f"Epoch: {epoch + 1}")
+        
         model.train()
-        train_loss = train_epoch(model, train_loader, optimizer, lr_scheduler, step)
+        train_loss, train_t_count, train_f_count = train_epoch(model, train_loader, optimizer, lr_scheduler, step)
+        train_accuracy.append(train_t_count / (train_t_count + train_f_count))
+        print(f"Train Loss: {train_loss.avg:.5f}, accuracy: {train_t_count / (train_t_count + train_f_count):.5f}")
+        
+        
         model.eval()
         with torch.no_grad():
-            valid_loss = valid_epoch(model, valid_loader)
-        
+            valid_loss, valid_t_count, valid_f_count = valid_epoch(model, valid_loader)
+        valid_accuracy.append(valid_t_count / (valid_t_count + valid_f_count))
+        print(f"Valid Loss: {valid_loss.avg:.5f}, accuracy: {valid_t_count / (valid_t_count + valid_f_count):.5f}")
+
         if valid_loss.avg < best_loss:
             best_loss = valid_loss.avg
             torch.save(model.state_dict(), "best.pt")

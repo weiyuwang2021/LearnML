@@ -43,5 +43,6 @@ class CLIPModel(nn.Module):
         images_loss = cross_entropy(logits.T, targets.T, reduction='none')
         loss =  (images_loss + texts_loss) / 2.0 # shape: (batch_size)
         pred = torch.argmax(logits, dim = 1).tolist()
-        target = [x for x in range(len(pred))]
+        #target1 = [x for x in range(len(pred))]
+        target = torch.argmax(targets, dim = 1).tolist()
         return loss.mean(), pred, target
